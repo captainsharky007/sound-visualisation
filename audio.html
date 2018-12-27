@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset=utf-8>
+	<title>My first three.js app</title>
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+		}
+
+		canvas {
+			width: 100vw;
+			height: 100vh
+		}
+	</style>
+</head>
+
+<body>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/99/three.js"></script>
+	<script src="js/controls/OrbitControls.js"></script>
+	<script>
+		var beatsStudio = [
+		[200.00,10.25]
+		]
+
+		var scene = new THREE.Scene();
+		var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+		var renderer = new THREE.WebGLRenderer({
+			antialias: true
+		});
+		var controls = new THREE.OrbitControls(camera);
+
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+
+		var globe1Rad = 12;
+		var globe2Rad = 9;
+		var globe3Rad = 6;
+		var angleDegreeStep = 5;
+		//var geometry = new THREE.BufferGeomtery
+		var color = new THREE.Color();
+		//navigator.mediaDevices.getUserMedia( { audio: true, video: false } ).then( handleSuccess );
+		var fftSize = 256;
+
+		var listener = new THREE.AudioListener();
+		var audio = new THREE.Audio(listener);
+		//var context = listener.context;
+		//vaaar source = context.createMediaStreamSource( stream );
+
+		var mediaElement = new Audio('sounds/376737_Skullbeatz___Bad_Cat_Maste.mp3');
+		var original = new Audio('sounds/Beats_Solo2.mp3');
+		var src = audio.setMediaElementSource(mediaElement);
+
+		setTimeout(function() {
+			mediaElement.loop = true;
+			mediaElement.currentTime = 15
+			mediaElement.play();
+		},100)
+
+	  // filters = [];
+		// for (var key in beatsStudio) {
+		// 	var audioCtx = audio.context;
+		// 	var biquadFilter = audioCtx.createBiquadFilter();
+		// 	//var biquadFilter2 = audioCtx.createBiquadFilter();
+		// 	// biquadFilter2.type = "peaking";
+		// 	// biquadFilter2.frequency.setValueAtTime(beatsStudio[key][0], audioCtx.currentTime);
+		// 	// biquadFilter2.gain.setValueAtTime(beatsStudio[key][1], audioCtx.currentTime);
+		// 	biquadFilter.type = "peaking";
+		// 	biquadFilter.frequency.setValueAtTime(beatsStudio[key][0], audioCtx.currentTime);
+		// 	biquadFilter.gain.setValueAtTime(beatsStudio[key][1], audioCtx.currentTime);
+		//
+		// 	//biquadFilter.connect(audio.context.destination);
+		//
+		// 	if(key != 0) {
+		// 		filters[key-1].connect(biquadFilter);
+		// 	}
+		// 	filters.push(biquadFilter)
+		// }
+		//var gainNode = audioCtx.createGain();
+	 // gainNode.gain.value = 0;
+		//gainNode.connect(filters[beatsStudio.length-1])
+		//filters[beatsStudio.length-1].connect(gainNode);
+		//gainNode.connect(audio.context.destination)
+
+		audio.source.connect(audio.context.destination);
+
+		analyser = new THREE.AudioAnalyser(audio, fftSize);
+		var correction = true;
+		function toggle() {
+			if(correction) {
+				// disable correction
+				console.log('Correction off')
+				correction = false;
+				mediaElement.currentTime
+				mediaElement.pause();
+				original.currentTime = mediaElement.currentTime;
+				original.play()
+			} else {
+				correction = true;
+					console.log('Correction on')
+				original.currentTime
+				original.pause();
+				mediaElement.currentTime = original.currentTime;
+				mediaElement.play()
+			}
+
+		}
+
+		function pause() {
+			original.pause()
+			mediaElement.pause()
+		}
+		function createGlobe(radius) {
+			var geometry = new THREE.BufferGeometry();
+			var positions = [];
+			var colors = [];
+			for (var i = 1; i < 360; i = i + angleDegreeStep) {
+				for (var j = 1; j < 360; j = j + angleDegreeStep) {
+					var x = Math.sin(i * Math.PI / 180) * Math.cos(j * Math.PI / 180) * radius;
+					var y = Math.sin(i * Math.PI / 180) * Math.sin(j * Math.PI / 180) * radius;
+					var z = Math.cos(i * Math.PI / 180) * radius;
+					positions.push(x, y, z);
+					color.setRGB(66, 244, 182);
+					colors.push(color.r, color.g, color.b);
+				}
+			}
+			geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+			geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+			geometry.computeBoundingSphere();
+			var material = new THREE.PointsMaterial({
+				size: 0.01,
+				vertexColors: THREE.VertexColors
+			});
+			var array = new THREE.Points(geometry, material);
+			scene.add(array);
+			return array;
+		}
+
+		var points1 = createGlobe(globe1Rad);
+		var points2 = createGlobe(globe2Rad);
+		var points3 = createGlobe(globe3Rad);
+		//scene.add(points1)
+		camera.position.z = 5;
+		var animate = function() {
+			analyser.getFrequencyData();
+			requestAnimationFrame(animate);
+			controls.update();
+			var time = Date.now() * 0.001;
+			points1.rotation.x = time * 0.25;
+			points1.rotation.y = time * 0.5;
+			points2.rotation.x = time * -0.25;
+			points2.rotation.y = time * -0.5;
+			points3.rotation.z = time * 0.25;
+			points3.rotation.y = time * 0.5;
+			points1.scale.set(analyser.data[0] / 100 + 1, analyser.data[0] / 100 + 1, analyser.data[0] / 100 + 1);
+			points2.scale.set(analyser.data[15] / 100 + 1, analyser.data[15] / 100 + 1, analyser.data[15] / 100 + 1);
+			points3.scale.set(analyser.data[30] / 100 + 1, analyser.data[30] / 100 + 1, analyser.data[30] / 100 + 1);
+			renderer.render(scene, camera);
+		};
+		animate();
+
+		function handleSuccess(stream) {
+			//audio.setMediaElementSource( src );
+
+			//audio.setMediaElementSource( mediaElement );
+			//var source = listener.context.createMediaStreamSource(stream);
+			//audio.setNodeSource(source);
+
+		}
+		handleSuccess();
+
+		//animate();
+		window.addEventListener('resize', onWindowResize, false);
+
+		function onWindowResize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
+	</script>
+</body>
+
+</html>
